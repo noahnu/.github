@@ -1,0 +1,65 @@
+---
+name: setup-python
+description: Setup Environment
+inputs:
+  python-version:
+    description: Version of python (leave empty to infer)
+    required: false
+  fetch-depth:
+    description: Fetch depth passed to git checkout
+    required: false
+
+outputs:
+  python-version:
+    value: ${{ steps.detect-python.outputs.version }}
+    description: Detected Python version.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Git Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
+      with:
+        fetch-depth: ${{ inputs.fetch-depth || 0 }}
+
+    - name: Detect Python Version
+      id: detect-python
+      run: |
+        if [[ -z "${{ inputs.python-version }}" ]]; then
+          echo "version=$(cat .python-version | tr -d '\n')" >> $GITHUB_OUTPUT
+        else
+          echo "version=${{ inputs.python-version }}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - name: Detect Poetry Version
+      id: detect-poetry
+      run: |
+        poetry_version=$(test -f .poetry-version && cat .poetry-version || true | tr -d '\n')
+        echo "version=${poetry_version}" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - name: Set up Python ${{ steps.detect-python.outputs.version }}
+      uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236  # tag=v4.7.1
+      with:
+        python-version: ${{ steps.detect-python.outputs.version }}
+
+    - name: Poetry Cache
+      id: cached-poetry
+      uses: actions/cache@704facf57e6136b1bc63b828d79edcd491f0ee84  # tag=v3.3.2
+      if: steps.detect-poetry.outputs.version != ''
+      with:
+        path: ~/.local  # the path depends on the OS
+        key: ${{ runner.os }}-${{ runner.arch }}-poetry-${{ steps.detect-poetry.outputs.version }}  # increment to reset cache
+
+    - name: Install Poetry
+      uses: snok/install-poetry@93ada01c735cc8a383ce0ce2ae205a21c415379b  # tag=v1.3.4
+      if: steps.detect-poetry.outputs.version != '' && steps.cached-poetry.outputs.cache-hit != 'true'
+      with:
+        version: ${{ steps.detect-poetry.outputs.version }}
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Install Project
+      shell: bash
+      run: . script/bootstrap
