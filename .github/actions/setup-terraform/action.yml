@@ -1,0 +1,56 @@
+---
+name: setup-terraform
+description: Setup Environment
+inputs:
+  terraform-version:
+    description: Version of terraform (leave empty to infer)
+    required: false
+
+  fetch-depth:
+    description: Fetch depth passed to git checkout
+    required: false
+
+  aws-access-key-id:
+    description: AWS Access Key ID
+    required: false
+  aws-secret-access-key:
+    description: AWS Secret Access Key
+    required: false
+  aws-region:
+    description: AWS default region
+    required: false
+
+outputs:
+  terraform-version:
+    value: ${{ steps.detect-terraform.outputs.version }}
+    description: Detected terraform version.
+
+runs:
+  using: "composite"
+  steps:
+    - name: Git Checkout
+      uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # tag=v4.1.1
+      with:
+        fetch-depth: ${{ inputs.fetch-depth || 0 }}
+
+    - name: Detect terraform Version
+      id: detect-terraform
+      run: |
+        if [[ -z "${{ inputs.terraform-version }}" ]]; then
+          echo "version=$(cat .tfswitchrc | tr -d '\n')" >> $GITHUB_OUTPUT
+        else
+          echo "version=${{ inputs.terraform-version }}" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+
+    - uses: aws-actions/configure-aws-credentials@010d0da01d0b5a38af31e9c3470dbfdabdecca3a # tag=v4.0.1
+      if: inputs.aws-access-key-id
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region || 'us-east-1' }}
+
+    - name: Set up terraform ${{ steps.detect-terraform.outputs.version }}
+      uses: hashicorp/setup-terraform@a1502cd9e758c50496cc9ac5308c4843bcd56d36 # tag=v3.0.0
+      with:
+        terraform_version: ${{ steps.detect-terraform.outputs.version }}

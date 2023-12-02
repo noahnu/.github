@@ -50,6 +50,11 @@ runs:
           .pnp.*
         key: ${{ runner.os }}-${{ runner.arch }}-${{ steps.detect-node.outputs.version }}-${{ hashFiles('yarn.lock') }}
 
+    - name: Disable Global Cache
+      shell: bash
+      run: |
+        echo "YARN_ENABLE_GLOBAL_CACHE=0" >> "$GITHUB_ENV"
+
     - name: Install Project
       shell: bash
       run: yarn --immutable
