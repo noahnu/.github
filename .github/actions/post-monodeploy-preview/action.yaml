@@ -1,0 +1,65 @@
+---
+name: Post Monodeploy Preview
+description: Post a release preview of modified packages
+
+inputs:
+  token:
+    description: GitHub token for posting a comment on pull requests
+
+runs:
+  using: composite
+  steps:
+    - name: Run Monodeploy in Dry Run Mode
+      shell: bash
+      id: run-monodeploy
+      run: |
+        echo "<!-- MONODEPLOY:BELOW -->" > ${{ runner.temp }}/CHANGELOG.md
+        yarn monodeploy --dry-run \
+          --log-level 0 \
+          --git-base-branch origin/${{ github.base_ref }} \
+          --changelog-filename ${{ runner.temp }}/CHANGELOG.md \
+          --changeset-filename ${{ runner.temp }}/changes.json \
+          --force-write-change-files
+
+    - name: Write Preview File
+      shell: bash
+      env:
+        PREVIEW_FILE: ${{ format('{0}/changelog_preview.md', runner.temp) }}
+      run: |
+        {
+          echo "<!-- MONODEPLOY_CHANGELOG_PREVIEW -->";
+          echo "# Package Release Preview";
+          echo;
+        } >> "${PREVIEW_FILE}"
+
+        if jq -e '. == {}' ${{ runner.temp }}/changes.json >/dev/null; then
+          {
+            echo -n "This pull request does not introduce any package version changes. ";
+            echo "If this is incorrect, please ensure that you are using conventional commit prefixes.";
+          } >> "${PREVIEW_FILE}"
+        else
+          {
+            echo "This Pull Request introduces the following changes:";
+            echo;
+            cat ${{ runner.temp }}/CHANGELOG.md;
+          } >> "${PREVIEW_FILE}"
+        fi
+
+    - name: Check for Changelog Comment
+      uses: peter-evans/find-comment@a54c31d7fa095754bfef525c0c8e5e5674c4b4b1 # v2.4.0
+      id: found-comment
+      if: github.event_name == 'pull_request'
+      with:
+        token: ${{ inputs.token }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body-includes: <!-- MONODEPLOY_CHANGELOG_PREVIEW -->
+
+    - name: Post Changelog to PR
+      uses: peter-evans/create-or-update-comment@23ff15729ef2fc348714a3bb66d2f655ca9066f2 # v3.1.0
+      if: github.event_name == 'pull_request'
+      with:
+        token: ${{ inputs.token }}
+        comment-id: ${{ steps.found-comment.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        edit-mode: replace
+        body-path: ${{ runner.temp }}/changelog_preview.md
