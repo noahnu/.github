@@ -46,7 +46,7 @@ runs:
 
     - name: Poetry Cache
       id: cached-poetry
-      uses: actions/cache@0c45773b623bea8c8e75f6c82b208c3cf94ea4f9 # v4.0.2
+      uses: actions/cache@2cdf405574d6ef1f33a1d12acccd3ae82f47b3f2 # v4.1.0
       if: steps.detect-poetry.outputs.version != ''
       with:
         path: ~/.local  # the path depends on the OS
