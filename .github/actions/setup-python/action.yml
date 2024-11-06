@@ -53,7 +53,7 @@ runs:
         key: ${{ runner.os }}-${{ runner.arch }}-poetry-${{ steps.detect-poetry.outputs.version }}  # increment to reset cache
 
     - name: Install Poetry
-      uses: snok/install-poetry@93ada01c735cc8a383ce0ce2ae205a21c415379b  # tag=v1.3.4
+      uses: snok/install-poetry@76e04a911780d5b312d89783f7b1cd627778900a # v1.4.1
       if: steps.detect-poetry.outputs.version != '' && steps.cached-poetry.outputs.cache-hit != 'true'
       with:
         version: ${{ steps.detect-poetry.outputs.version }}
