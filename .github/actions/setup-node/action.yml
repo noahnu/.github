@@ -11,6 +11,10 @@ inputs:
   ssh-key:
     description: SSH key to use for the checkout
     required: false
+  skip-checkout:
+    description: Skip git checkout (use when another setup action already checked out)
+    required: false
+    default: "false"
 
 outputs:
   node-version:
@@ -21,6 +25,7 @@ runs:
   using: "composite"
   steps:
     - name: Git Checkout
+      if: inputs.skip-checkout != 'true'
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: ${{ inputs.fetch-depth || 0 }}
